@@ -17,7 +17,7 @@ public class PoolScript<T> where T : MonoBehaviour
 {
 	private Node<T> head = null;
 	private T blueprint;
-    private Vector3 hidePos = new Vector3( -1000f, 1000f, 0f );
+	private Vector3 hidePos = new Vector3( -1000f, 1000f, 0f );
 	
 	public void Populate( T blueprint, int count )
 	{
