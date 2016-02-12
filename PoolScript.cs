@@ -23,7 +23,7 @@ public class PoolScript<T> where T : MonoBehaviour
 	{
 		this.blueprint = blueprint;
 		
-        if ( count > 0 )
+		if( count > 0 )
 		{
 			head = new Node<T>( NewObject() );
 			
