@@ -2,7 +2,7 @@
 A generic pooling script for Unity 3D
 
 # How To Use
-This pool can only store objects that extend MonoBehaviour (i.e. components). You can create a new pool like this: 
+This pool can store anything that extends Object (e.g. components, GameObjects). You can use the pool as following: 
 
 ```C#
 // The pool
