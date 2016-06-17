@@ -16,7 +16,7 @@ void Start()
 	// Create a new pool that uses prefabObject as its template
 	myPool = new PoolScript<Transform>( prefabObject );
 	
-	// Populate the pool with 5 instances of the template object
+	// Populate (pre-warm) the pool with 5 instances of the template object
 	myPool.Populate( 5 );
 }
 
