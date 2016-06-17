@@ -13,12 +13,11 @@ public Transform prefabObject;
 
 void Start()
 {
-	// Create a new pool
-	myPool = new PoolScript<Transform>();
+	// Create a new pool that uses prefabObject as its template
+	myPool = new PoolScript<Transform>( prefabObject );
 	
-	// Give the prefabObject as template to the pool but do not initially populate the pool (0)
-	// if you change 0 to 5, pool will be initialized with 5 instances of the template object available
-	myPool.Populate( prefabObject, 0 );
+	// Populate the pool with 5 instances of the template object
+	myPool.Populate( 5 );
 }
 
 void DoStuffWithPool()
@@ -27,10 +26,10 @@ void DoStuffWithPool()
 	Transform anInstance = myPool.Pop();
 	
 	// ...
-	// Reposition anInstance to where you want it to be and do stuff with it
+	// Use anInstance as you wish (you may want to reposition it first, though)
 	// ...
 	
-	// If you are done with the object, push the object back into the pool (object will be disabled)
+	// If you are done with the object, push it back into the pool (object will be disabled)
 	myPool.Push( anInstance );
 }
 ```
