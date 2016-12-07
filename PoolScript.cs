@@ -1,93 +1,88 @@
 using UnityEngine;
-
-// A linked list node
-public class Node<T> where T : Object
-{
-	public T obj;
-	public Node<T> next;
-
-	public Node( T go )
-	{
-		obj = go;
-		next = null;
-	}
-}
+using System;
+using System.Collections.Generic;
+using Object = UnityEngine.Object;
 
 // Generic pool class
 // Author: Suleyman Yasir Kula
 // Feel free to use/upgrade
-public class PoolScript<T> where T : Object
+public class PoolScript<T> where T : class
 {
+	private enum ObjectType { GameObject, Component, UnityObject, Object };
+
 	// Head of the linked list
-	private Node<T> head = null;
+	private List<T> pool = null;
 
 	// Blueprint to use for instantiation
-	private T blueprint = null;
-	
+	public T Blueprint { get; set; }
+
 	// Some awkward place to teleport the pooled GameObject's to
 	// (in addition to deactivating the GameObject)
 	private Vector3 hidePos = new Vector3( -10000f, 10000f, 0f );
 
-	// Flags to determine the generic type
-	private bool isTComponent = false;
-	private bool isTGameObject = false;
+	// Generic type
+	private ObjectType objectType;
 
-	public PoolScript()
+	// A function that can be used to override default NewObject( T ) function
+	private Func<T, T> createFunction;
+
+	// Actions that can be used to implement extra logic on pushed/popped objects
+	private Action<T> onPush, onPop;
+
+	public PoolScript( Func<T, T> createFunction = null, Action<T> onPush = null, Action<T> onPop = null )
 	{
-		// Simply determine the generic type:
-		// it can be a component, a GameObject or neither
-		if( typeof( T ).IsSubclassOf( typeof( Component ) ) || typeof( T ) == typeof( Component ) )
-			isTComponent = true;
+		pool = new List<T>();
 
-		if( typeof( T ).IsSubclassOf( typeof( GameObject ) ) || typeof( T ) == typeof( GameObject ) )
-			isTGameObject = true;
+		this.createFunction = createFunction;
+		this.onPush = onPush;
+		this.onPop = onPop;
+
+		// Simply determine the generic type:
+		// it can be a Component, a GameObject, a UnityEngine.Object or a plain object
+		if( typeof( T ).IsSubclassOf( typeof( Component ) ) || typeof( T ) == typeof( Component ) )
+			objectType = ObjectType.Component;
+		else if( typeof( T ).IsSubclassOf( typeof( GameObject ) ) || typeof( T ) == typeof( GameObject ) )
+			objectType = ObjectType.GameObject;
+		else if( typeof( T ).IsSubclassOf( typeof( Object ) ) || typeof( T ) == typeof( Object ) )
+			objectType = ObjectType.UnityObject;
+		else
+			objectType = ObjectType.Object;
 	}
 
-	public PoolScript( T blueprint ) : this()
+	public PoolScript( T blueprint, Func<T, T> createFunction = null, Action<T> onPush = null, Action<T> onPop = null ) 
+							: this( createFunction, onPush, onPop )
 	{
 		// Set the blueprint at creation
-		this.blueprint = blueprint;
-	}
-
-	// Mutator for blueprint
-	public void SetBlueprint( T blueprint )
-	{
-		this.blueprint = blueprint;
-	}
-
-	// Accessor for blueprint
-	public T GetBlueprint()
-	{
-		return blueprint;
+		Blueprint = blueprint;
 	}
 
 	// Populate the pool with the default blueprint
-	public void Populate( int count )
+	public bool Populate( int count )
 	{
-		if( blueprint != null )
-		{
-			Populate( blueprint, count );
-		}
-		else
-		{
-			Debug.LogError( "Can't populate, no blueprint is set!" );
-		}
+		return Populate( Blueprint, count );
 	}
 
 	// Populate the pool with a specific blueprint
-	public void Populate( T blueprint, int count )
+	public bool Populate( T blueprint, int count )
 	{
-		if( count > 0 )
-		{
-			head = new Node<T>( NewObject( blueprint ) );
+		if( count <= 0 )
+			return true;
 
-			for( int i = 1; i < count; i++ )
-			{
-				Node<T> curr = head;
-				head = new Node<T>( NewObject( blueprint ) );
-				head.next = curr;
-			}
+		// Create a single object first to see if everything works fine
+		// If not, return false
+		T obj = NewObject( blueprint );
+		if( obj == null )
+			return false;
+
+		Push( obj );
+
+		// Everything works fine, populate the pool with the remaining items
+		for( int i = 1; i < count; i++ )
+		{
+			Push( NewObject( blueprint ) );
 		}
+
+		return true;
 	}
 
 	// Fetch an item from the pool
@@ -95,32 +90,29 @@ public class PoolScript<T> where T : Object
 	{
 		T objToPop;
 
-		if( head == null )
+		if( pool.Count == 0 )
 		{
 			// Pool is empty, instantiate the blueprint
 
-			if( blueprint == null )
-			{
-				Debug.LogError( "Can't pop object: no blueprint is set and the pool is empty!" );
-				return null;
-			}
-
-			objToPop = NewObject( blueprint );
+			objToPop = NewObject( Blueprint );
 		}
 		else
 		{
 			// Pool is not empty, fetch the first item in the pool
 
-			Node<T> curr = head;
-			head = head.next;
-			objToPop = curr.obj;
+			int index = pool.Count - 1;
+			objToPop = pool[index];
+			pool.RemoveAt( index );
 		}
-
+		
 		// If generic type is related with a GameObject, activate the gameObject
-		if( isTComponent )
+		if( objectType == ObjectType.Component )
 			( objToPop as Component ).gameObject.SetActive( true );
-		else if( isTGameObject )
+		else if( objectType == ObjectType.GameObject )
 			( objToPop as GameObject ).SetActive( true );
+
+		if( onPop != null )
+			onPop( objToPop );
 
 		return objToPop;
 	}
@@ -129,41 +121,55 @@ public class PoolScript<T> where T : Object
 	public void Push( T obj )
 	{
 		if( obj == null ) return;
-
+		
 		// If generic type is related with a GameObject,
 		// deactivate the gameObject and teleport it to hidePos
-		if( isTComponent )
+		if( objectType == ObjectType.Component )
 		{
 			Component comp = obj as Component;
 			comp.transform.position = hidePos;
 			comp.gameObject.SetActive( false );
 		}
-		else if( isTGameObject )
+		else if( objectType == ObjectType.GameObject )
 		{
 			GameObject gameObj = obj as GameObject;
 			gameObj.transform.position = hidePos;
 			gameObj.SetActive( false );
 		}
 
-		Node<T> newHead = new Node<T>( obj );
-		newHead.next = head;
-		head = newHead;
+		if( onPush != null )
+			onPush( obj );
+
+		pool.Add( obj );
 	}
 
 	// Create an instance of the blueprint and return it
 	private T NewObject( T blueprint )
 	{
-		T createdObj = Object.Instantiate( blueprint ) as T;
+		if( createFunction != null )
+			return createFunction( blueprint );
+
+		if( blueprint == null )
+			return null;
+		else if( objectType == ObjectType.Object )
+		{
+			if( blueprint is ICloneable )
+				return (T) ( (ICloneable) blueprint ).Clone();
+
+			return null;
+		}
+
+		T createdObj = Object.Instantiate( blueprint as Object ) as T;
 
 		// If generic type is related with a GameObject,
 		// deactivate the gameObject and teleport it to hidePos
-		if( isTComponent )
+		if( objectType == ObjectType.Component )
 		{
 			Component comp = createdObj as Component;
 			comp.transform.position = hidePos;
 			comp.gameObject.SetActive( false );
 		}
-		else if( isTGameObject )
+		else if( objectType == ObjectType.GameObject )
 		{
 			GameObject gameObj = createdObj as GameObject;
 			gameObj.transform.position = hidePos;
