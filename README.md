@@ -13,7 +13,7 @@ T Pop()
 T[] Pop( int count )
 void Push( T obj )
 void Push( IEnumerable<T> objects )
-void Clear( bool removeNullEntriesOnly = false, bool destroyRemovedObjects = true )
+void Clear( bool destroyObjects = true )
 
 SimplePoolHelper:
 
