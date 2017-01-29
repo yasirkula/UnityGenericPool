@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Object = UnityEngine.Object;
 
@@ -8,13 +8,14 @@ using Object = UnityEngine.Object;
 public class SimplePool<T> where T : class
 {
 	// Objects stored in the pool
-	private List<T> pool = null;
+	private Stack<T> pool = null;
 
 	// Blueprint to use for instantiation
 	private T m_blueprint;
 	private Object m_blueprintUnityObject;
 
-	public T Blueprint {
+	public T Blueprint
+	{
 		get
 		{
 			return m_blueprint;
@@ -34,7 +35,7 @@ public class SimplePool<T> where T : class
 
 	public SimplePool( Func<T, T> CreateFunction = null, Action<T> OnPush = null, Action<T> OnPop = null )
 	{
-		pool = new List<T>();
+		pool = new Stack<T>();
 
 		this.CreateFunction = CreateFunction;
 		this.OnPush = OnPush;
@@ -92,9 +93,19 @@ public class SimplePool<T> where T : class
 		{
 			// Pool is not empty, fetch the first item in the pool
 
-			int index = pool.Count - 1;
-			objToPop = pool[index];
-			pool.RemoveAt( index );
+			objToPop = pool.Pop();
+			while( objToPop == null )
+			{
+				// Some objects in the pool might have been destroyed (maybe during a scene transition),
+				// consider that case
+				if( pool.Count > 0 )
+					objToPop = pool.Pop();
+				else
+				{
+					objToPop = NewObject( Blueprint );
+					break;
+				}
+			}
 		}
 
 		if( OnPop != null )
@@ -124,7 +135,7 @@ public class SimplePool<T> where T : class
 		if( OnPush != null )
 			OnPush( obj );
 
-		pool.Add( obj );
+		pool.Push( obj );
 	}
 
 	// Pool multiple items at once
@@ -136,19 +147,19 @@ public class SimplePool<T> where T : class
 			Push( obj );
 	}
 
-	// Clear the pool (either completely or only the null entries, if any)
-	public void Clear( bool removeNullEntriesOnly = false, bool destroyRemovedObjects = true )
+	// Clear the pool
+	public void Clear( bool destroyObjects = true )
 	{
-		if( !removeNullEntriesOnly )
+		if( destroyObjects )
 		{
-			// Destroy the removed Objects
-			if( destroyRemovedObjects )
-				pool.ForEach( ( item ) => Object.Destroy( item as Object ) );
-
-			pool.Clear();
+			// Destroy all the Objects in the pool
+			foreach( T item in pool )
+			{
+				Object.Destroy( item as Object );
+			}
 		}
-		else
-			pool.RemoveAll( ( item ) => item == null );
+
+		pool.Clear();
 	}
 
 	// Create an instance of the blueprint and return it
