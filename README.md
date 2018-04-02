@@ -7,20 +7,27 @@ This pool comes with a helper class (SimplePoolHelper) that provides global acce
 ```C#
 SimplePool<T>:
 
-bool Populate( int count )
-bool Populate( T blueprint, int count )
-T Pop()
-T[] Pop( int count )
-void Push( T obj )
-void Push( IEnumerable<T> objects )
-void Clear( bool destroyObjects = true )
+// blueprint: object that gets instantiated when the pool is empty (only if T is of type UnityEngine.Object); also passed as parameter to the CreateFunction
+// CreateFunction: called when the pool needs to be populated. Takes blueprint as parameter and should return a new object (if left null and if T is of type UnityEngine.Object, blueprint will be instantiated)
+// OnPush: called when an object is pushed to the pool; can be used to e.g. deactivate the object
+// OnPop: called when an object is popped from the pool; can be used to e.g. activate the object
+SimplePool( Func<T, T> CreateFunction = null, Action<T> OnPush = null, Action<T> OnPop = null );
+SimplePool( T blueprint, Func<T, T> CreateFunction = null, Action<T> OnPush = null, Action<T> OnPop = null );
+
+bool Populate( int count );
+bool Populate( T blueprint, int count );
+T Pop();
+T[] Pop( int count );
+void Push( T obj );
+void Push( IEnumerable<T> objects );
+void Clear( bool destroyObjects = true );
 
 SimplePoolHelper:
 
-static SimplePool<T> GetPool<T>( string poolName = null )
-static void Push<T>( T obj, string poolName = null )
-static T Pop<T>( string poolName = null )
-static void Pool<T>( this T obj, string poolName = null )
+static SimplePool<T> GetPool<T>( string poolName = null );
+static void Push<T>( T obj, string poolName = null );
+static T Pop<T>( string poolName = null );
+static void Pool<T>( this T obj, string poolName = null );
 ```
 
 # Example Code
