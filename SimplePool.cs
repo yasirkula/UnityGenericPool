@@ -11,21 +11,7 @@ public class SimplePool<T> where T : class
 	private Stack<T> pool = null;
 
 	// Blueprint to use for instantiation
-	private T m_blueprint;
-	private Object m_blueprintUnityObject;
-
-	public T Blueprint
-	{
-		get
-		{
-			return m_blueprint;
-		}
-		set
-		{
-			m_blueprint = value;
-			m_blueprintUnityObject = value as Object;
-		}
-	}
+	public T Blueprint { get; set; }
 
 	// A function that can be used to override default NewObject( T ) function
 	public Func<T, T> CreateFunction;
@@ -168,9 +154,9 @@ public class SimplePool<T> where T : class
 		if( CreateFunction != null )
 			return CreateFunction( blueprint );
 
-		if( blueprint == null || m_blueprintUnityObject == null )
+		if( blueprint == null || !( blueprint is Object ) )
 			return null;
 
-		return Object.Instantiate( m_blueprintUnityObject ) as T;
+		return Object.Instantiate( blueprint as Object ) as T;
 	}
 }
